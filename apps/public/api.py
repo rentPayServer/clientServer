@@ -796,8 +796,8 @@ class PublicAPIView(viewsets.ViewSet):
     @Core_connector(transaction=True)
     def cashout(self,request, *args, **kwargs):
 
-        # if not check_google_token(request.user.google_token, request.data_format.get('vercode')):
-        #     raise PubErrorCustom("谷歌验证码不正确！")
+        if not check_google_token(request.user.google_token, request.data_format.get('vercode')):
+            raise PubErrorCustom("谷歌验证码不正确！")
 
         if not self.request.data_format.get("bank"):
             raise PubErrorCustom("请选择银行卡信息!")
@@ -1948,30 +1948,21 @@ class PublicAPIView(viewsets.ViewSet):
                         {"path": '/paypasswd', "component": "paypasswd", "name": '支付密码修改'}
                     ]
                 },
-                {
-                    "path": '/chongzhi',
-                    "component": "Home",
-                    "name": '充值管理',
-                    "iconCls": 'el-icon-s-finance',
-                    "children": [
-                        {"path": '/neichong', "component": "neichong", "name": '充值'}
-                    ]
-                },
-                {
-                    "path": '/daifu',
-                    "component": "Home",
-                    "name": '代付管理',
-                    "iconCls": 'el-icon-s-finance',
-                    "children": [
-                        {"path": '/cashoutlist_tixiandaifu', "component": "cashoutlist_tixiandaifu", "name": '提现'},
-                        {"path": '/cashoutlist_df', "component": "cashoutlist_df", "name": '提现列表'}
-                    ]
-                } if str(request.user.isapidaifu)=='0' else {
-                    "path": '/daifu',
-                    "component": "Home",
-                    "name": '代付管理',
-                    "iconCls": 'el-icon-s-finance',
-                },
+                # {
+                #     "path": '/daifu',
+                #     "component": "Home",
+                #     "name": '代付管理',
+                #     "iconCls": 'el-icon-s-finance',
+                #     "children": [
+                #         {"path": '/cashoutlist_tixiandaifu', "component": "cashoutlist_tixiandaifu", "name": '提现'},
+                #         {"path": '/cashoutlist_df', "component": "cashoutlist_df", "name": '提现列表'}
+                #     ]
+                # } if str(request.user.isapidaifu)=='0' else {
+                #     "path": '/daifu',
+                #     "component": "Home",
+                #     "name": '代付管理',
+                #     "iconCls": 'el-icon-s-finance',
+                # },
                 {
                     "path": '/order',
                     "component": "Home",
