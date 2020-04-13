@@ -468,7 +468,7 @@ class PublicAPIView(viewsets.ViewSet):
         user = Users.objects.raw("""
             SELECT t1.*,t2.name as rolename FROM user as t1
               INNER JOIN `role` t2 on t1.rolecode = t2.rolecode
-              WHERE t2.type = 0 and t1.status=0 and t1.rolecode!='1000' 
+              WHERE t2.type = 0 and t1.status=0
         """)
 
         return  {"data":  ManageSerializer(user,many=True).data}
