@@ -1584,8 +1584,7 @@ class PublicAPIView(viewsets.ViewSet):
                     "name": '订单管理',
                     "iconCls": 'el-icon-s-order',
                     "children": [
-                        {"path": '/orderlist', "component": "orderlist", "name": '订单列表'},
-                        {"path": '/cashoutlist_admin_df', "component": "cashoutlist_admin_df", "name": '代付订单列表'}
+                        {"path": '/orderlist', "component": "orderlist", "name": '订单列表'}
                     ]
                 },
                 {
@@ -1597,16 +1596,7 @@ class PublicAPIView(viewsets.ViewSet):
                         {"path": '/whitelist', "component": "whitelist", "name": '白名单管理'},
                         {"path": '/cache', "component": "cache", "name": '缓存管理'}
                     ]
-                },
-                {
-                    "path": '/cqmanage',
-                    "component": "Home",
-                    "name": '码商管理',
-                    "iconCls": 'el-icon-user-solid',
-                    "children": [
-                        {"path": '/codequotient', "component": "codequotient", "name": '码商维护'},
-                    ]
-                },
+                }
                 # {
                 #     "path": '/wechathelpermanage',
                 #     "component": "Home",
@@ -1705,8 +1695,7 @@ class PublicAPIView(viewsets.ViewSet):
                     "name": '订单管理',
                     "iconCls": 'el-icon-s-order',
                     "children": [
-                        {"path": '/orderlist', "component": "orderlist", "name": '订单列表'},
-                        {"path": '/cashoutlist_admin_df', "component": "cashoutlist_admin_df", "name": '代付订单列表'}
+                        {"path": '/orderlist', "component": "orderlist", "name": '订单列表'}
                     ]
                 },
                 {
@@ -1718,16 +1707,7 @@ class PublicAPIView(viewsets.ViewSet):
                         {"path": '/whitelist', "component": "whitelist", "name": '白名单管理'},
                         {"path": '/cache', "component": "cache", "name": '缓存管理'}
                     ]
-                },
-                {
-                    "path": '/cqmanage',
-                    "component": "Home",
-                    "name": '码商管理',
-                    "iconCls": 'el-icon-user-solid',
-                    "children": [
-                        {"path": '/codequotient', "component": "codequotient", "name": '码商维护'},
-                    ]
-                },
+                }
                 # {
                 #     "path": '/cqmanage',
                 #     "component": "Home",
