@@ -1592,6 +1592,7 @@ class PublicAPIView(viewsets.ViewSet):
                     "children": [
                         {"path": '/paypassNew', "component": "paypassNew", "name": '支付渠道'},
                         {"path": '/paytype', "component": "paytype", "name": '支付方式'},
+                        {"path": '/cashoutlist_admin', "component": "cashoutlist_admin", "name": '提现申请审核(下游)'},
                         {"path": '/cashoutlist1', "component": "cashoutlist1", "name": '打款记录'},
                     ]
                 },
@@ -1688,7 +1689,6 @@ class PublicAPIView(viewsets.ViewSet):
                         {"path": '/ordercount', "component": "ordercount", "name": '每日报表'},
                         {"path": '/ballist_admin', "component": "ballist_admin", "name": '资金明细'},
                         {"path": '/ubaladmin', "component": "ubaladmin", "name": '调账'},
-                        {"path": '/accCheckok', "component": "accCheckok", "name": '对账'},
                     ]
                 },
                 {
