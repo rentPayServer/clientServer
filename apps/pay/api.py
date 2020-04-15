@@ -377,7 +377,8 @@ class PayAPIView(viewsets.ViewSet):
                 rate=PayPassLinkType.objects.get(paytypeid=item.paytypeid,to_id=self.request.user.userid,type='1').rate
                 data.append({
                     "name" :  item.typename + item.name,
-                    "rate" : "%.2lf"%(float(rate) * 100.0)
+                    "rate" : "%.2lf"%(float(rate) * 100.0),
+                    "id":item.paytypeid
                 })
             except PayPassLinkType.DoesNotExist:
                 pass

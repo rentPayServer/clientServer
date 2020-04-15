@@ -5,11 +5,11 @@ from rest_framework.decorators import list_route
 from core.decorator.response import Core_connector
 from utils.exceptions import PubErrorCustom
 from requests import request as requestAlias
-from apps.user.models import Login,Users,Role,UserLink,BalList
+from apps.user.models import Login,Users,Role,UserLink,BalList,UserBal
 import json
 from apps.order.models import Order
 
-from apps.user.serializers import UsersSerializer1,WaitbnSerializer,AgentSerializer,BusinessSerializer,UsersSerializer,BankInfoSerializer
+from apps.user.serializers import UserBalModelSerializer,UsersSerializer1,WaitbnSerializer,AgentSerializer,BusinessSerializer,UsersSerializer,BankInfoSerializer
 from apps.pay.serializers import PayPassModelSerializer
 from auth.authentication import Authentication
 from apps.public.utils import check_df_ip
@@ -34,7 +34,7 @@ from libs.utils.google_auth import create_google_token
 
 from apps.lastpass.utils import LastPass_BAWANGKUAIJIE,LastPass_KUAIJIE,LastPass_GCPAYS
 
-from apps.account import AccountCashout,AccountCashoutCanle,AccountCashoutConfirm,AccountCashoutConfirmFee
+from apps.account import AccountCashout,AccountCashoutCanle,AccountCashoutConfirm,AccountCashoutConfirmFee,AccountCz
 import time
 import os
 import subprocess
@@ -203,6 +203,9 @@ class PublicAPIView(viewsets.ViewSet):
 
 
         return None
+
+
+
 
     #查询用户
     @list_route(methods=['GET'])
@@ -487,6 +490,13 @@ class PublicAPIView(viewsets.ViewSet):
 
         return None
 
+    #查询用户
+    @list_route(methods=['GET'])
+    @Core_connector()
+    def getpaypassids(self,request,*args, **kwargs):
+
+        return {"data":PayPassModelSerializer(PayPass.objects.filter(status='0'),many=True).data}
+
     @list_route(methods=['POST'])
     @Core_connector(transaction=True, serializer_class=UsersSerializer1, model_class=Users)
     def manageadd_add(self,request, *args, **kwargs):
@@ -705,7 +715,7 @@ class PublicAPIView(viewsets.ViewSet):
                 query_params.append([item.userid for item in userlink])
 
         user=Users.objects.raw("""
-            SELECT t1.* FROM user as t1
+            SELECT t1.*  FROM user as t1
               INNER JOIN `role` as t2 on t1.rolecode=t2.rolecode and t2.type='1'
               WHERE 1=1 %s
         """%(query_format),query_params)
@@ -790,6 +800,12 @@ class PublicAPIView(viewsets.ViewSet):
 
         return {"data":create_google_token_url(user.google_token,user.name)}
 
+    @list_route(methods=['GET'])
+    @Core_connector()
+    def get_user_paypassid(self,request, *args, **kwargs):
+        print(self.request.user.userid)
+        return {"data":UserBalModelSerializer(UserBal.objects.filter(userid=self.request.user.userid).order_by('paypassid'), many=True).data}
+
 
     #提现申请
     @list_route(methods=['POST'])
@@ -802,6 +818,9 @@ class PublicAPIView(viewsets.ViewSet):
         if not self.request.data_format.get("bank"):
             raise PubErrorCustom("请选择银行卡信息!")
 
+        if not self.request.data_format.get("paypassid"):
+            raise PubErrorCustom("请选择渠道ID!")
+
         if not self.request.data_format.get("pay_passwd"):
             raise PubErrorCustom("请输入支付密码!")
         if self.request.data_format.get("pay_passwd") != self.request.user.pay_passwd:
@@ -812,7 +831,12 @@ class PublicAPIView(viewsets.ViewSet):
         else:
             fee = float(self.request.user.fee_rule)
 
-        if float(self.request.user.bal) - abs(float(self.request.user.cashout_bal)) - fee < self.request.data_format.get("amount"):
+        try:
+            userbal = UserBal.objects.get(userid=self.request.user.userid,paypassid=self.request.data_format.get("paypassid"))
+        except UserBal.DoesNotExist:
+            raise PubErrorCustom("无此渠道余额!")
+
+        if float(userbal.bal) - abs(float(userbal.cashout_bal)) - fee < self.request.data_format.get("amount"):
             raise  PubErrorCustom("可提余额不足!")
 
         if self.request.data_format.get("amount")<=0 :
@@ -827,14 +851,15 @@ class PublicAPIView(viewsets.ViewSet):
             "bank_name" : self.request.data_format.get("bank")['bank_name'],
             "open_name" : self.request.data_format.get("bank")['open_name'],
             "open_bank" : self.request.data_format.get("bank")['open_bank'],
+            "paypassid":self.request.data_format.get("paypassid") ,
             "bank_card_number" : self.request.data_format.get("bank")['bank_card_number'],
             "status" : "0"
         })
 
-        cashlist.downordercode = "%08d" % cashlist.id
+        cashlist.downordercode = "C%08d" % (cashlist.id)
         cashlist.save()
 
-        user = AccountCashout(userid=self.request.user.userid,amount=self.request.data_format.get("amount"),ordercode=cashlist.downordercode).run()
+        user = AccountCashout(paypassid=self.request.data_format.get("paypassid"),userid=self.request.user.userid,amount=self.request.data_format.get("amount"),ordercode=cashlist.downordercode).run()
 
         return {"data": {"bal": round(user.bal, 2), "cashout_bal": round(user.cashout_bal, 2)}}
 
@@ -909,11 +934,8 @@ class PublicAPIView(viewsets.ViewSet):
     @Core_connector(transaction=True)
     def correct(self,request, *args, **kwargs):
 
-        print(request.data_format)
-        try:
-            user = Users.objects.select_for_update().get(userid=request.data_format.get('userid'))
-        except Users.DoesNotExist:
-            raise PubErrorCustom("该用户不存在!")
+        paypassid = request.data_format.get('paypassid',None)
+        userid=  request.data_format.get('userid',None)
 
         if not request.data_format.get("amount") :
             raise PubErrorCustom("请输入金额!")
@@ -921,18 +943,7 @@ class PublicAPIView(viewsets.ViewSet):
         if not request.data_format.get("memo1") :
             raise PubErrorCustom("说明情况不能为空!")
 
-        BalList.objects.create(**{
-            "userid": user.userid,
-            "amount": request.data_format.get("amount"),
-            "bal": user.bal,
-            "confirm_bal": float(user.bal) + request.data_format.get("amount"),
-            "memo": "冲正",
-            "memo1" : request.data_format.get("memo1"),
-            "ordercode": 0
-        })
-
-        user.bal = float(user.bal) + request.data_format.get("amount")
-        user.save()
+        AccountCz(userid=userid,paypassid=paypassid,amount=request.data_format.get("amount"),memo=request.data_format.get("memo1")).run()
 
         return None
 
@@ -1177,11 +1188,17 @@ class PublicAPIView(viewsets.ViewSet):
         # upd_bal(userid=self.request.data_format.get("userid"),cashout_bal = cashlist.amount*-1,bal=cashlist.amount*-1,memo="提现")
 
         try:
-            user = Users.objects.select_for_update().get(userid=self.request.data_format.get("userid"))
+            user = Users.objects.select_for_update().get(userid=cashlist.userid)
         except Users.DoesNotExist:
-            raise PubErrorCustom("无对应用户信息({})".format(self.request.data_format.get("userid")))
-        AccountCashoutConfirmFee(user=user).run()
-        AccountCashoutConfirm(user=user, amount=cashlist.amount).run()
+            raise PubErrorCustom("无对应用户信息({})".format(cashlist.userid))
+        try:
+            userbal = UserBal.objects.select_for_update().get(userid=cashlist.userid,paypassid=cashlist.paypassid)
+        except UserBal.DoesNotExist:
+            raise PubErrorCustom("无对应渠道余额信息({})".format(cashlist.paypassid))
+
+
+        AccountCashoutConfirmFee(user=user,userbal=userbal).run()
+        AccountCashoutConfirm(user=user,userbal=userbal, amount=cashlist.amount).run()
 
         return None
 
@@ -1200,7 +1217,7 @@ class PublicAPIView(viewsets.ViewSet):
         cashlist.save()
 
         # upd_bal(userid=self.request.data_format.get("userid"),cashout_bal = cashlist.amount*-1)
-        AccountCashoutCanle(userid=self.request.data_format.get("userid"), amount=cashlist.amount).run()
+        AccountCashoutCanle(paypassid=cashlist.paypassid, userid=self.request.data_format.get("userid"), amount=cashlist.amount).run()
 
         return None
 

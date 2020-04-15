@@ -1,7 +1,7 @@
 
 from utils.exceptions import PubErrorCustom
 from libs.utils.mytime import UtilTime
-from apps.user.models import Users,BalList
+from apps.user.models import Users,BalList,UserBal
 from libs.utils.log import logger
 from apps.public.utils import get_fee_rule_forSys
 
@@ -16,6 +16,7 @@ class AccountBase(object):
             self.amount = float(self.amount)
 
         self.ordercode = kwargs.get('ordercode', 0)
+        self.memo = kwargs.get("memo","")
 
         userid = kwargs.get('userid', None)
         user = kwargs.get('user',None)
@@ -30,23 +31,30 @@ class AccountBase(object):
         else:
             self.user = user
 
-        logger.info("""动账前: userid:{} upd_bal_date:{} amount:{} ordercode:{} bal:{} cashout_bal:{} stop_bal:{} lastday_bal:{} today_bal:{} lastday_pay_amount:{} 
-                        today_pay_amount:{} tot_pay_amount:{} lastday_cashout_amount:{} today_cashout_amount:{} tot_cashout_amount:{}""".format(
+        paypassid = kwargs.get("paypassid",None)
+        userbal = kwargs.get('userbal', None)
+        if not (paypassid or userbal):
+            raise PubErrorCustom("渠道ID不能为空!")
+
+        if not userbal:
+            try:
+                self.userBal = UserBal.objects.select_for_update().get(userid=userid,paypassid=paypassid)
+            except UserBal.DoesNotExist:
+                self.userBal = UserBal.objects.create(**{
+                    "userid":userid,
+                    "paypassid":paypassid,
+                })
+        else:
+            self.userBal = userbal
+
+        logger.info("""动账前: userid:{} amount:{} ordercode:{} totbal:{} bal:{} cashout_bal:{} stop_bal:{}""".format(
             self.user.userid,
             self.user.upd_bal_date,
             self.amount,
             self.ordercode,
             self.user.bal,
-            self.user.cashout_bal,
-            self.user.stop_bal,
-            self.user.lastday_bal,
-            self.user.today_bal,
-            self.user.lastday_pay_amount,
-            self.user.today_pay_amount,
-            self.user.tot_pay_amount,
-            self.user.lastday_cashout_amount,
-            self.user.today_cashout_amount,
-            self.user.tot_cashout_amount,
+            self.userBal.bal,
+            self.userBal.cashout_bal,
         ))
 
         self.today = UtilTime().arrow_to_string(format_v="YYYYMMDD")
@@ -79,13 +87,15 @@ class AccountBase(object):
             self.user.upd_bal_date = self.today
             self.user.save()
 
-    def AccountListInsert(self,memo):
+    def AccountListInsert(self,memo,memo1=""):
         BalList.objects.create(**{
             "userid" : self.user.userid,
             "amount" : self.amount,
-            "bal" : self.user.bal,
-            "confirm_bal" : float(self.user.bal) + float(self.amount),
+            "bal" : self.userBal.bal,
+            "paypassid": self.userBal.paypassid,
+            "confirm_bal" : float(self.userBal.bal) + float(self.amount),
             "memo" : memo,
+            "memo1":memo1,
             "ordercode": self.ordercode
         })
 
@@ -113,23 +123,50 @@ class AccountPay(AccountBase):
         self.user.bal = float(self.user.bal) + self.amount
         self.user.save()
 
-        logger.info("""动账后: userid:{} upd_bal_date:{} amount:{} ordercode:{} bal:{} cashout_bal:{} stop_bal:{} lastday_bal:{} today_bal:{} lastday_pay_amount:{} 
-                        today_pay_amount:{} tot_pay_amount:{} lastday_cashout_amount:{} today_cashout_amount:{} tot_cashout_amount:{}""".format(
+        self.userBal.bal = float(self.userBal.bal) + self.amount
+        self.userBal.save()
+
+        logger.info("""动账后: userid:{} amount:{} ordercode:{} totbal:{} bal:{} cashout_bal:{} stop_bal:{}""".format(
             self.user.userid,
             self.user.upd_bal_date,
             self.amount,
             self.ordercode,
             self.user.bal,
-            self.user.cashout_bal,
-            self.user.stop_bal,
-            self.user.lastday_bal,
-            self.user.today_bal,
-            self.user.lastday_pay_amount,
-            self.user.today_pay_amount,
-            self.user.tot_pay_amount,
-            self.user.lastday_cashout_amount,
-            self.user.today_cashout_amount,
-            self.user.tot_cashout_amount,
+            self.userBal.bal,
+            self.userBal.cashout_bal,
+        ))
+
+        return self.user
+
+class AccountCz(AccountBase):
+
+    """
+    动账-冲正
+    """
+
+    def __init__(self,**kwargs):
+
+        # kwargs.setdefault("isPay",True)
+        super().__init__(**kwargs)
+
+    def run(self):
+        logger.info("冲正")
+        self.AccountListInsert("冲正",self.memo)
+
+        self.user.bal = float(self.user.bal) + self.amount
+        self.user.save()
+
+        self.userBal.bal = float(self.userBal.bal) + self.amount
+        self.userBal.save()
+
+        logger.info("""动账后: userid:{} amount:{} ordercode:{} totbal:{} bal:{} cashout_bal:{} stop_bal:{}""".format(
+            self.user.userid,
+            self.user.upd_bal_date,
+            self.amount,
+            self.ordercode,
+            self.user.bal,
+            self.userBal.bal,
+            self.userBal.cashout_bal,
         ))
 
         return self.user
@@ -149,23 +186,17 @@ class AccountCashout(AccountBase):
         self.user.cashout_bal = float(self.user.cashout_bal) + self.amount
         self.user.save()
 
-        logger.info("""动账后: userid:{} upd_bal_date:{} amount:{} ordercode:{} bal:{} cashout_bal:{} stop_bal:{} lastday_bal:{} today_bal:{} lastday_pay_amount:{} 
-                        today_pay_amount:{} tot_pay_amount:{} lastday_cashout_amount:{} today_cashout_amount:{} tot_cashout_amount:{}""".format(
+        self.userBal.cashout_bal = float(self.userBal.cashout_bal) + self.amount
+        self.userBal.save()
+
+        logger.info("""动账后: userid:{} amount:{} ordercode:{} totbal:{} bal:{} cashout_bal:{} stop_bal:{}""".format(
             self.user.userid,
             self.user.upd_bal_date,
             self.amount,
             self.ordercode,
             self.user.bal,
-            self.user.cashout_bal,
-            self.user.stop_bal,
-            self.user.lastday_bal,
-            self.user.today_bal,
-            self.user.lastday_pay_amount,
-            self.user.today_pay_amount,
-            self.user.tot_pay_amount,
-            self.user.lastday_cashout_amount,
-            self.user.today_cashout_amount,
-            self.user.tot_cashout_amount,
+            self.userBal.bal,
+            self.userBal.cashout_bal,
         ))
 
         return self.user
@@ -185,24 +216,19 @@ class AccountCashoutCanle(AccountBase):
         self.user.cashout_bal = float(self.user.cashout_bal) + self.amount * -1
         self.user.save()
 
-        logger.info("""动账后: userid:{} upd_bal_date:{} amount:{} ordercode:{} bal:{} cashout_bal:{} stop_bal:{} lastday_bal:{} today_bal:{} lastday_pay_amount:{} 
-                        today_pay_amount:{} tot_pay_amount:{} lastday_cashout_amount:{} today_cashout_amount:{} tot_cashout_amount:{}""".format(
+        self.userBal.cashout_bal = float(self.userBal.cashout_bal) + self.amount * -1
+        self.userBal.save()
+
+        logger.info("""动账后: userid:{} amount:{} ordercode:{} totbal:{} bal:{} cashout_bal:{} stop_bal:{}""".format(
             self.user.userid,
             self.user.upd_bal_date,
             self.amount,
             self.ordercode,
             self.user.bal,
-            self.user.cashout_bal,
-            self.user.stop_bal,
-            self.user.lastday_bal,
-            self.user.today_bal,
-            self.user.lastday_pay_amount,
-            self.user.today_pay_amount,
-            self.user.tot_pay_amount,
-            self.user.lastday_cashout_amount,
-            self.user.today_cashout_amount,
-            self.user.tot_cashout_amount,
+            self.userBal.bal,
+            self.userBal.cashout_bal,
         ))
+
         return self.user
 
 class AccountCashoutConfirm(AccountBase):
@@ -222,23 +248,20 @@ class AccountCashoutConfirm(AccountBase):
         self.user.today_bal = float(self.user.today_bal) + self.amount
         self.user.bal = float(self.user.bal) + self.amount
         self.user.save()
-        logger.info("""动账后: userid:{} upd_bal_date:{} amount:{} ordercode:{} bal:{} cashout_bal:{} stop_bal:{} lastday_bal:{} today_bal:{} lastday_pay_amount:{} 
-                        today_pay_amount:{} tot_pay_amount:{} lastday_cashout_amount:{} today_cashout_amount:{} tot_cashout_amount:{}""".format(
+
+        self.userBal.cashout_bal = float(self.userBal.cashout_bal) + self.amount
+        self.userBal.bal = float(self.userBal.bal) + self.amount
+        self.userBal.save()
+
+
+        logger.info("""动账后: userid:{} amount:{} ordercode:{} totbal:{} bal:{} cashout_bal:{} stop_bal:{}""".format(
             self.user.userid,
             self.user.upd_bal_date,
             self.amount,
             self.ordercode,
             self.user.bal,
-            self.user.cashout_bal,
-            self.user.stop_bal,
-            self.user.lastday_bal,
-            self.user.today_bal,
-            self.user.lastday_pay_amount,
-            self.user.today_pay_amount,
-            self.user.tot_pay_amount,
-            self.user.lastday_cashout_amount,
-            self.user.today_cashout_amount,
-            self.user.tot_cashout_amount,
+            self.userBal.bal,
+            self.userBal.cashout_bal,
         ))
 
         return self.user
@@ -265,23 +288,17 @@ class AccountCashoutConfirmFee(AccountBase):
         self.user.bal = float(self.user.bal) + self.amount
         self.user.save()
 
-        logger.info("""动账后: userid:{} upd_bal_date:{} amount:{} ordercode:{} bal:{} cashout_bal:{} stop_bal:{} lastday_bal:{} today_bal:{} lastday_pay_amount:{} 
-                        today_pay_amount:{} tot_pay_amount:{} lastday_cashout_amount:{} today_cashout_amount:{} tot_cashout_amount:{}""".format(
+        self.userBal.bal = float(self.userBal.bal) + self.amount
+        self.userBal.save()
+
+        logger.info("""动账后: userid:{} amount:{} ordercode:{} totbal:{} bal:{} cashout_bal:{} stop_bal:{}""".format(
             self.user.userid,
             self.user.upd_bal_date,
             self.amount,
             self.ordercode,
             self.user.bal,
-            self.user.cashout_bal,
-            self.user.stop_bal,
-            self.user.lastday_bal,
-            self.user.today_bal,
-            self.user.lastday_pay_amount,
-            self.user.today_pay_amount,
-            self.user.tot_pay_amount,
-            self.user.lastday_cashout_amount,
-            self.user.today_cashout_amount,
-            self.user.tot_cashout_amount,
+            self.userBal.bal,
+            self.userBal.cashout_bal,
         ))
 
         return self.user
@@ -310,23 +327,19 @@ class AccountStop(AccountBase):
         self.user.today_bal = float(self.user.today_bal) + self.amount
         self.user.bal = float(self.user.bal) + self.amount
         self.user.save()
-        logger.info("""动账后: userid:{} upd_bal_date:{} amount:{} ordercode:{} bal:{} cashout_bal:{} stop_bal:{} lastday_bal:{} today_bal:{} lastday_pay_amount:{} 
-                        today_pay_amount:{} tot_pay_amount:{} lastday_cashout_amount:{} today_cashout_amount:{} tot_cashout_amount:{}""".format(
+
+        self.userBal.stop_bal = float(self.userBal.stop_bal) + self.amount * -1
+        self.userBal.bal = float(self.userBal.bal) + self.amount
+        self.userBal.save()
+
+        logger.info("""动账后: userid:{} amount:{} ordercode:{} totbal:{} bal:{} cashout_bal:{} stop_bal:{}""".format(
             self.user.userid,
             self.user.upd_bal_date,
             self.amount,
             self.ordercode,
             self.user.bal,
-            self.user.cashout_bal,
-            self.user.stop_bal,
-            self.user.lastday_bal,
-            self.user.today_bal,
-            self.user.lastday_pay_amount,
-            self.user.today_pay_amount,
-            self.user.tot_pay_amount,
-            self.user.lastday_cashout_amount,
-            self.user.today_cashout_amount,
-            self.user.tot_cashout_amount,
+            self.userBal.bal,
+            self.userBal.cashout_bal,
         ))
 
         return self.user
@@ -353,23 +366,18 @@ class AccountStopCanle(AccountBase):
         self.user.bal = float(self.user.bal) + self.amount
         self.user.save()
 
-        logger.info("""动账后: userid:{} upd_bal_date:{} amount:{} ordercode:{} bal:{} cashout_bal:{} stop_bal:{} lastday_bal:{} today_bal:{} lastday_pay_amount:{} 
-                        today_pay_amount:{} tot_pay_amount:{} lastday_cashout_amount:{} today_cashout_amount:{} tot_cashout_amount:{}""".format(
+        self.userBal.stop_bal = float(self.userBal.stop_bal) + self.amount * -1
+        self.userBal.bal = float(self.userBal.bal) + self.amount
+        self.userBal.save()
+
+        logger.info("""动账后: userid:{} amount:{} ordercode:{} totbal:{} bal:{} cashout_bal:{} stop_bal:{}""".format(
             self.user.userid,
             self.user.upd_bal_date,
             self.amount,
             self.ordercode,
             self.user.bal,
-            self.user.cashout_bal,
-            self.user.stop_bal,
-            self.user.lastday_bal,
-            self.user.today_bal,
-            self.user.lastday_pay_amount,
-            self.user.today_pay_amount,
-            self.user.tot_pay_amount,
-            self.user.lastday_cashout_amount,
-            self.user.today_cashout_amount,
-            self.user.tot_cashout_amount,
+            self.userBal.bal,
+            self.userBal.cashout_bal,
         ))
 
         return self.user

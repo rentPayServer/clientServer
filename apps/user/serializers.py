@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
-from apps.user.models import Users,UserLink,Role,Login
+from apps.user.models import Users,UserLink,Role,Login,UserBal
 from libs.utils.mytime import timestamp_toTime
 from apps.pay.models import PayPass,PayType
 
@@ -36,7 +36,7 @@ class UsersSerializer(serializers.Serializer):
 
     google_token = serializers.CharField()
 
-    bal = serializers.DecimalField(max_digits=18,decimal_places=2)
+    bal = serializers.SerializerMethodField()
     cashout_bal = serializers.DecimalField(max_digits=18,decimal_places=2)
     up_bal = serializers.DecimalField(max_digits=18,decimal_places=2)
 
@@ -76,6 +76,11 @@ class UsersSerializer(serializers.Serializer):
     def get_lastlogintime(self,obj):
         return timestamp_toTime(Login.objects.filter(userid=obj.userid).order_by('-createtime')[0].createtime)
 
+    def get_bal(self,obj):
+
+        return UserBalModelSerializer(UserBal.objects.filter(userid=obj.userid).order_by('paypassid'), many=True).data
+
+
 
 
 class BallistSerializer(serializers.Serializer):
@@ -83,6 +88,9 @@ class BallistSerializer(serializers.Serializer):
 
     ordercode = serializers.CharField()
     memo = serializers.SerializerMethodField()
+    memo1 = serializers.CharField()
+
+    paypassid = serializers.IntegerField()
 
     bal = serializers.DecimalField(max_digits=18, decimal_places=2)
     amount = serializers.DecimalField(max_digits=18, decimal_places=2)
@@ -106,11 +114,11 @@ class AgentSerializer(serializers.Serializer):
     concat = serializers.CharField()
     contype = serializers.CharField()
 
-    bal = serializers.DecimalField(max_digits=18, decimal_places=2)
-    bal1 = serializers.SerializerMethodField()
+    bal = serializers.SerializerMethodField()
 
-    def get_bal1(self,obj):
-        return round(float(obj.bal)-float(obj.cashout_bal),2)
+    def get_bal(self,obj):
+
+        return UserBalModelSerializer(UserBal.objects.filter(userid=obj.userid).order_by('paypassid'),many=True).data
 
     def get_createtime(self,obj):
         return timestamp_toTime(obj.createtime)
@@ -127,9 +135,7 @@ class BusinessSerializer(serializers.Serializer):
     up_bal = serializers.DecimalField(max_digits=18, decimal_places=2)
     today_amount = serializers.SerializerMethodField()
 
-    bal = serializers.DecimalField(max_digits=18,decimal_places=2)
-
-    bal1 = serializers.SerializerMethodField()
+    bal = serializers.SerializerMethodField()
 
     agents = serializers.SerializerMethodField()
 
@@ -196,8 +202,9 @@ class BusinessSerializer(serializers.Serializer):
         #     tot = float(tot) + float(item.amount)
         return 0.0
 
-    def get_bal1(self,obj):
-        return round(float(obj.bal)-float(obj.cashout_bal),2)
+    def get_bal(self,obj):
+
+        return UserBalModelSerializer(UserBal.objects.filter(userid=obj.userid).order_by('paypassid'),many=True).data
 
     def get_agents(self,obj):
         return UserLinkModelSerializer(UserLink.objects.filter(userid=obj.userid).order_by("level"),many=True).data
@@ -211,6 +218,17 @@ class BusinessSerializer(serializers.Serializer):
             return pay.name
         except PayPass.DoesNotExist:
             return ""
+
+
+class UserBalModelSerializer(serializers.ModelSerializer):
+
+    bal = serializers.DecimalField(max_digits=18,decimal_places=2)
+    cashout_bal = serializers.DecimalField(max_digits=18,decimal_places=2)
+    stop_bal = serializers.DecimalField(max_digits=18,decimal_places=2)
+
+    class Meta:
+        model = UserBal
+        fields = '__all__'
 
 class UserLinkModelSerializer(serializers.ModelSerializer):
 

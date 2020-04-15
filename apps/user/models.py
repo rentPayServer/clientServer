@@ -150,6 +150,26 @@ class UserLink(models.Model):
         db_table = 'userlink'
 
 
+class  UserBal(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    userid = models.BigIntegerField(verbose_name="用户ID")
+    paypassid =  models.BigIntegerField(verbose_name="渠道ID")
+    bal = models.DecimalField(max_digits=18,decimal_places=6,default=0.000,verbose_name="余额")
+    cashout_bal = models.DecimalField(max_digits=18,decimal_places=6,default=0.000,verbose_name="提现余额")
+    stop_bal = models.DecimalField(max_digits=18, decimal_places=6, default=0.000, verbose_name="冻结余额")
+    updtime = models.BigIntegerField()
+
+    def save(self, *args, **kwargs):
+        t=time.mktime(timezone.now().timetuple())
+        self.updtime = t
+        return super(UserBal, self).save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = '用户渠道余额表'
+        verbose_name_plural = verbose_name
+        db_table = 'userbal'
+
+
 class Role(models.Model):
     id = models.BigAutoField(primary_key=True)
     rolecode =  models.CharField(max_length=4,default='')
@@ -176,6 +196,7 @@ class BalList(models.Model):
     bal = models.DecimalField(max_digits=18, decimal_places=6, default=0.000, verbose_name="交易前金额")
     confirm_bal = models.DecimalField(max_digits=18, decimal_places=6, default=0.000, verbose_name="交易后金额")
     memo = models.CharField(max_length=255,verbose_name="交易摘要")
+    paypassid = models.BigIntegerField(verbose_name="渠道Id")
     ordercode = models.CharField(max_length=120,default='0',verbose_name="订单号")
     memo1 = models.CharField(max_length=255, verbose_name="交易摘要",default="1")
 
