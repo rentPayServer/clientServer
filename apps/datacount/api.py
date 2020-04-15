@@ -7,7 +7,9 @@ from libs.utils.log import logger
 
 from apps.datacount.models import OrderCount
 import datetime
-
+from apps.user.models import Users
+from django.db.models import Sum
+from apps.user.models import UserBal
 from auth.authentication import Authentication
 from rest_framework.decorators import list_route
 
@@ -26,6 +28,70 @@ class DataCountAPIView(GenericViewSetCustom):
     def get_authenticators(self):
         return [auth() for auth in [Authentication]]
 
+    @list_route(methods=['GET'])
+    @Core_connector()
+    def gethomedata(self, request, *args, **kwargs):
+
+        r_data={
+            "czamount":0.0,  #充值金额
+            "cznumber":0,   #充值数量
+            "czamountok": 0.0,  # 充值金额
+            "cznumberok": 0,  # 充值数量
+            "czrate":'0.0%', #成功率
+            "countlirun":0.0, #统计利润
+            "czlirun": 0.0,  # 实际利润
+            "rolecode": self.request.user.rolecode
+        }
+
+        ut = UtilTime()
+
+        start = request.query_params_format.get("start",None)
+        end = request.query_params_format.get("end",None)
+
+        start = send_toTimestamp(datetime.datetime.now().strftime('%Y-%m-%d')+' 00:00:01') if not start else \
+            ut.string_to_timestamp(start)
+
+        end = send_toTimestamp(datetime.datetime.now().strftime('%Y-%m-%d')+' 23:59:59') if not end else \
+            ut.string_to_timestamp(end)
+
+        query = Order.objects.filter(createtime__lte=end,createtime__gte=start)
+
+
+        if self.request.user.rolecode in ["1000","1001","1005","1006"]:
+            r_data['czlirun'] = round(request.user.bal, 2)
+        elif self.request.user.rolecode == '2001':
+            bal = UserBal.objects.filter(userid=self.request.user.userid).aggregate(sum=Sum("bal"))['sum']
+            r_data['czlirun'] = round(bal, 2)
+            query = query.filter(userid=self.request.user.userid)
+        elif request.user.rolecode == "3001":
+            userlink = UserLink.objects.filter(userid_to=self.request.user.userid)
+            if not userlink.exists():
+                query=Order.objects.filter(userid=0)
+            else:
+                links= [item.userid for item in userlink]
+                query=query.filter(userid__in=links)
+                bal = UserBal.objects.filter(userid__in=links).aggregate(sum=Sum("bal"))['sum']
+                r_data['czlirun'] = round(bal, 2)
+        else:
+            raise PubErrorCustom("用户类型有误!")
+
+        for rowItem in query:
+
+            r_data['czamount'] += float(rowItem.amount)
+            r_data['cznumber'] += 1
+
+            if rowItem.status=='0':
+                r_data['czamountok'] += float(rowItem.confirm_amount)
+                r_data['cznumberok'] += 1
+                r_data['countlirun'] += float(rowItem.myfee)
+
+        r_data['czamountok'] = round(r_data['czamountok'],2)
+        r_data['countlirun'] = round(r_data['countlirun'],2)
+        r_data['czamount'] = round(r_data['czamount'],2)
+        r_data['czrate'] = "{}".format(round(r_data['cznumberok'] * 100.0 / r_data['cznumber'] ,2) if r_data['cznumber']> 0 else 0 )
+
+
+        return {"data":r_data}
 
     @list_route(methods=['GET'])
     @Core_connector(pagination=True)

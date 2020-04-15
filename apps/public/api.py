@@ -7,6 +7,7 @@ from utils.exceptions import PubErrorCustom
 from requests import request as requestAlias
 from apps.user.models import Login,Users,Role,UserLink,BalList,UserBal
 import json
+from decimal import *
 from apps.order.models import Order
 
 from apps.user.serializers import UserBalModelSerializer,UsersSerializer1,WaitbnSerializer,AgentSerializer,BusinessSerializer,UsersSerializer,BankInfoSerializer
@@ -732,6 +733,31 @@ class PublicAPIView(viewsets.ViewSet):
     def agent_delete(self,request, *args, **kwargs):
         UserLink.objects.get(id=self.request.data_format.get('id')).delete()
 
+        return None
+
+    #利润扣减
+    @list_route(methods=['POST'])
+    @Core_connector(transaction=True)
+    def lirunupd(self,request, *args, **kwargs):
+
+        amount = request.data_format.get("amount",None)
+        if not amount:
+            raise PubErrorCustom("请输入金额!")
+        amount = Decimal(str(amount))
+
+        user = Users.objects.select_for_update().get(userid=1)
+        print("{}利润扣减{}".format( user.bal,amount))
+        BalList.objects.create(**{
+            "userid" : user.userid,
+            "amount" : amount * -1,
+            "bal" : user.bal,
+            "paypassid":0,
+            "confirm_bal" : user.bal + (amount * -1),
+            "memo" : "利润扣减",
+            "ordercode": 0
+        })
+        user.bal -= amount
+        user.save()
         return None
 
 
@@ -1578,10 +1604,12 @@ class PublicAPIView(viewsets.ViewSet):
                     "name": '财务数据',
                     "iconCls": 'el-icon-s-finance',
                     "children": [
+                        {"path": '/busicount', "component": "busicount", "name": '通道数据'},
                         {"path": '/passcount', "component": "passcount", "name": '渠道数据'},
                         {"path": '/ordercount', "component": "ordercount", "name": '每日报表'},
                         {"path": '/ballist_admin', "component": "ballist_admin", "name": '资金明细'},
                         {"path": '/ubaladmin', "component": "ubaladmin", "name": '调账'},
+                        {"path": '/kj', "component": "kj", "name": '利润扣减'},
                     ]
                 },
                 {
