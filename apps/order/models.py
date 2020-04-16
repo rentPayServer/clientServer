@@ -31,6 +31,7 @@ class Order(models.Model):
 
     ismobile = models.CharField(max_length=1,verbose_name="是否手机,0-手机,1-pc",default='0')
 
+
     client_ip = models.CharField(max_length=60,verbose_name="客户端IP",default='')
     notifyurl = models.CharField(max_length=255,verbose_name="异步通知URL",default='')
 
