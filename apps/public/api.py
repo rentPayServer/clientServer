@@ -1738,7 +1738,7 @@ class PublicAPIView(viewsets.ViewSet):
                     "name": '订单管理',
                     "iconCls": 'el-icon-s-order',
                     "children": [
-                        {"path": '/orderlist_s', "component": "orderlist", "name": '订单列表'}
+                        {"path": '/orderlist_s', "component": "orderlist_s", "name": '订单列表'}
                     ]
                 },
             ]}}
