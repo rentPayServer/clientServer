@@ -83,6 +83,7 @@ class CashoutList(models.Model):
     textstatus = models.CharField(max_length=255,verbose_name="代付状态",default="")
 
     createtime = models.BigIntegerField(default=0)
+    fee = models.DecimalField(max_digits=18,decimal_places=6,default=0.000,verbose_name="提现手续费")
 
     updtime  = models.BigIntegerField(default=0)
 

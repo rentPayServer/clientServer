@@ -173,7 +173,8 @@ class PayAPIView(viewsets.ViewSet):
             "name" : request.data_format.get("name"),
             "concat": request.data_format.get("concat"),
             "contype": request.data_format.get("contype"),
-            "callback_ip": request.data_format.get("callback_ip")
+            "callback_ip": request.data_format.get("callback_ip"),
+            "fee":request.data_format.get("fee")
         })
         return None
 

@@ -852,10 +852,14 @@ class PublicAPIView(viewsets.ViewSet):
         if self.request.data_format.get("pay_passwd") != self.request.user.pay_passwd:
             raise PubErrorCustom("支付密码错误!")
 
-        if self.request.user.fee_rule <= 0.0:
-            fee = get_fee_rule_forSys()
-        else:
-            fee = float(self.request.user.fee_rule)
+        # if self.request.user.fee_rule <= 0.0:
+        #     fee = get_fee_rule_forSys()
+        # else:
+        #     fee = float(self.request.user.fee_rule)
+        try:
+            fee = float(PayPass.objects.get(paypassid=self.request.data_format.get("paypassid")).fee)
+        except PayPass.DoesNotExist:
+            raise PubErrorCustom("该渠道不存在!")
 
         try:
             userbal = UserBal.objects.get(userid=self.request.user.userid,paypassid=self.request.data_format.get("paypassid"))
@@ -873,6 +877,7 @@ class PublicAPIView(viewsets.ViewSet):
         cashlist = CashoutList.objects.create(**{
             "userid" : self.request.user.userid ,
             "name" : self.request.user.name,
+            "fee" : fee,
             "amount" : self.request.data_format.get("amount") ,
             "bank_name" : self.request.data_format.get("bank")['bank_name'],
             "open_name" : self.request.data_format.get("bank")['open_name'],
@@ -1223,7 +1228,7 @@ class PublicAPIView(viewsets.ViewSet):
             raise PubErrorCustom("无对应渠道余额信息({})".format(cashlist.paypassid))
 
 
-        AccountCashoutConfirmFee(user=user,userbal=userbal).run()
+        AccountCashoutConfirmFee(user=user,userbal=userbal).run(cashlist.fee)
         AccountCashoutConfirm(user=user,userbal=userbal, amount=cashlist.amount).run()
 
         return None

@@ -55,6 +55,7 @@ class PayPassModelSerializer(serializers.ModelSerializer):
     status_format = serializers.SerializerMethodField()
     isdayfu_format = serializers.SerializerMethodField()
     custom_format = serializers.SerializerMethodField()
+    fee = serializers.DecimalField(max_digits=18,decimal_places=2)
 
     def get_createtime_format(self,obj):
         return UtilTime().timestamp_to_string(obj.createtime)

@@ -65,6 +65,7 @@ class CashoutListModelSerializer(serializers.ModelSerializer):
 
     status_name = serializers.SerializerMethodField()
     createtime = serializers.SerializerMethodField()
+    fee = serializers.DecimalField(max_digits=18,decimal_places=2)
 
     updtime = serializers.SerializerMethodField()
     amount = serializers.DecimalField(max_digits=18, decimal_places=2)

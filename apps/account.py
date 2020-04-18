@@ -272,12 +272,13 @@ class AccountCashoutConfirmFee(AccountBase):
         kwargs.setdefault("amount",0.1)
         super().__init__(**kwargs)
 
-    def run(self):
+    def run(self,fee=0.0):
         logger.info("手工下发手续费")
-        if self.user.fee_rule <= 0.0:
-            self.amount = get_fee_rule_forSys()
-        else:
-            self.amount = float(self.user.fee_rule)
+        self.amount = float(fee)
+        # if self.user.fee_rule <= 0.0:
+        #     self.amount = get_fee_rule_forSys()
+        # else:
+        #     self.amount = float(self.user.fee_rule)
         self.amount = self.amount * -1
         self.AccountListInsert("手工下发手续费")
 

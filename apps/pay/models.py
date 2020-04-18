@@ -43,6 +43,7 @@ class PayPass(models.Model):
     concat = models.CharField(max_length=30,verbose_name="联系人",default="")
     contype = models.CharField(max_length=30,verbose_name="联系方式",default="")
     isdayfu = models.CharField(max_length=1,verbose_name="是否代付,0-是,1-不是",default='1')
+    fee = models.DecimalField(max_digits=18,decimal_places=6,default=0.00,verbose_name="下发手续费")
 
     bal = models.DecimalField(max_digits=18,decimal_places=6,default=0.00,verbose_name="余额")
     amount = models.DecimalField(max_digits=18,decimal_places=6,default=0.00,verbose_name="流水")
