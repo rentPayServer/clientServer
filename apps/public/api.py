@@ -861,16 +861,16 @@ class PublicAPIView(viewsets.ViewSet):
         except PayPass.DoesNotExist:
             raise PubErrorCustom("该渠道不存在!")
 
-        try:
-            userbal = UserBal.objects.get(userid=self.request.user.userid,paypassid=self.request.data_format.get("paypassid"))
-        except UserBal.DoesNotExist:
-            raise PubErrorCustom("无此渠道余额!")
-
-        if float(userbal.bal) - abs(float(userbal.cashout_bal)) - fee < self.request.data_format.get("amount"):
-            raise  PubErrorCustom("可提余额不足!")
-
-        if self.request.data_format.get("amount")<=0 :
-            raise PubErrorCustom("请输入正确的提现金额!")
+        # try:
+        #     userbal = UserBal.objects.get(userid=self.request.user.userid,paypassid=self.request.data_format.get("paypassid"))
+        # except UserBal.DoesNotExist:
+        #     raise PubErrorCustom("无此渠道余额!")
+        #
+        # if float(userbal.bal) - abs(float(userbal.cashout_bal)) - fee < self.request.data_format.get("amount"):
+        #     raise  PubErrorCustom("可提余额不足!")
+        #
+        # if self.request.data_format.get("amount")<=0 :
+        #     raise PubErrorCustom("请输入正确的提现金额!")
 
         # user = upd_bal(userid=self.request.user.userid,cashout_bal = self.request.data_format.get("amount"))
 
@@ -890,7 +890,10 @@ class PublicAPIView(viewsets.ViewSet):
         cashlist.downordercode = "C%08d" % (cashlist.id)
         cashlist.save()
 
-        user = AccountCashout(paypassid=self.request.data_format.get("paypassid"),userid=self.request.user.userid,amount=self.request.data_format.get("amount"),ordercode=cashlist.downordercode).run()
+        user = AccountCashout(paypassid=self.request.data_format.get("paypassid"),
+                              userid=self.request.user.userid,
+                              amount=self.request.data_format.get("amount"),
+                              ordercode=cashlist.downordercode).run(fee)
 
         return {"data": {"bal": round(user.bal, 2), "cashout_bal": round(user.cashout_bal, 2)}}
 
@@ -1239,7 +1242,7 @@ class PublicAPIView(viewsets.ViewSet):
     def cashout_cancel(self, request, *args, **kwargs):
 
         try:
-            cashlist = CashoutList.objects.select_for_update().get(id=self.request.data_format.get('id'))
+            cashlist = CashoutList.objects.select_for_update().get(id=self.request.data_format.get('id'),status='0')
         except CashoutList.DoesNotExist:
             raise PubErrorCustom("此纪录不存在!")
 

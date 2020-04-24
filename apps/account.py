@@ -181,10 +181,17 @@ class AccountCashout(AccountBase):
         kwargs.setdefault("isCashout", True)
         super().__init__(**kwargs)
 
-    def run(self):
+    def run(self,fee):
         logger.info("提现申请")
         self.user.cashout_bal = float(self.user.cashout_bal) + self.amount
         self.user.save()
+
+        if float(self.userBal.bal) - abs(float(self.userBal.cashout_bal)) - fee < self.amount:
+            raise  PubErrorCustom("可提余额不足!")
+
+        if self.amount<=0 :
+            raise PubErrorCustom("请输入正确的提现金额!")
+
 
         self.userBal.cashout_bal = float(self.userBal.cashout_bal) + self.amount
         self.userBal.save()
