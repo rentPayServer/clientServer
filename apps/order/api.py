@@ -62,7 +62,7 @@ class OrderAPIView(GenericViewSetCustom):
         if request.query_params_format.get("down_status"):
             QuerySet = QuerySet.filter(down_status=request.query_params_format.get("down_status"))
 
-        if request.user.rolecode in ["1000","1001","1006"]:
+        if request.user.rolecode in ["1000","1001","1006","1002"]:
             pass
         elif request.user.rolecode == "2001" :
             QuerySet=QuerySet.filter(userid=self.request.user.userid)

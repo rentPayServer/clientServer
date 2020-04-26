@@ -57,8 +57,11 @@ class DataCountAPIView(GenericViewSetCustom):
         query = Order.objects.filter(createtime__lte=end,createtime__gte=start)
 
 
-        if self.request.user.rolecode in ["1000","1001","1005","1006"]:
-            r_data['czlirun'] = round(request.user.bal, 2)
+        if self.request.user.rolecode in ["1000","1002","1001","1005","1006"]:
+            if self.request.user.rolecode == '1002':
+                r_data['czlirun'] = round(Users.objects.get(userid=1).bal, 2)
+            else:
+                r_data['czlirun'] = round(request.user.bal, 2)
         elif self.request.user.rolecode == '2001':
             bal = UserBal.objects.filter(userid=self.request.user.userid).aggregate(sum=Sum("bal"))['sum']
             r_data['czlirun'] = round(bal, 2)

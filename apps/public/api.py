@@ -1750,6 +1750,37 @@ class PublicAPIView(viewsets.ViewSet):
                     ]
                 },
             ]}}
+        elif request.user.rolecode in ["1002"]:
+            return {"data": {"router": [
+                {
+                    "path": '/',
+                    "component": "Home",
+                    "name": '首页',
+                    "iconCls": 'el-icon-s-home',
+                    "children": [
+                        {"path": '/dashboard', "component": "dashboard", "name": '桌面'},
+                        {"path": '/logquery', "component": "logquery", "name": '登录日志'},
+                    ]
+                },
+                {
+                    "path": '/anquan',
+                    "component": "Home",
+                    "name": '安全管理',
+                    "iconCls": 'el-icon-s-finance',
+                    "children": [
+                        {"path": '/passwd', "component": "passwd", "name": '密码修改'}
+                    ]
+                },
+                {
+                    "path": '/order',
+                    "component": "Home",
+                    "name": '订单管理',
+                    "iconCls": 'el-icon-s-order',
+                    "children": [
+                        {"path": '/orderlist_v', "component": "orderlist_v", "name": '订单列表'}
+                    ]
+                },
+            ]}}
         elif request.user.rolecode in ["2001"]:
             return { "data" : {"router" : [
                 {
