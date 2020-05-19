@@ -372,6 +372,17 @@ class DataCountAPIView(GenericViewSetCustom):
             query_format = query_format + " and t2.userid =%s"
             query_params.append(request.query_params_format.get("userid"))
 
+
+        if self.request.user.rolecode in ["1000", "1001","1006"]:
+            pass
+        elif self.request.user.rolecode == '2001':
+            query_format = query_format + " and t2.userid =%s"
+            query_params.append(self.request.user.userid)
+        elif request.user.rolecode == "3001":
+            raise PubErrorCustom("无权限!")
+        else:
+            raise PubErrorCustom("用户类型有误!")
+
         orders = Order.objects.raw("""
                 SELECT t1.* FROM `order` as t1
                 INNER JOIN `user` as t2 ON t1.userid = t2.userid and t2.status='0'
