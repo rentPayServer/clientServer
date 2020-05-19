@@ -1848,7 +1848,7 @@ class PublicAPIView(viewsets.ViewSet):
                         # {"path": '/bankinfo', "component": "bankinfo", "name": '银行卡设置'},
                         {"path": '/cashoutlist_sb', "component": "cashoutlist_sb", "name": '提现申请'} if self.request.user.istixianpage != '0' else {"path": '/cashout', "component": "cashout", "name": '提现申请'},
                         {"path": '/cashoutlist', "component": "cashoutlist", "name": '提现申请记录'},
-                        {"path": '/cashoutlist1', "component": "cashoutlist1", "name": '打款记录'},
+                        {"path": '/cashoutlist2', "component": "cashoutlist2", "name": '打款记录'},
                     ]
                 },
             ]}}
