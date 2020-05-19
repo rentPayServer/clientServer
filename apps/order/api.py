@@ -346,6 +346,9 @@ class OrderAPIView(GenericViewSetCustom):
         if self.request.query_params_format.get("no") :
             QuerySet = QuerySet.filter(downordercode=self.request.query_params_format.get("no"))
 
+        if self.request.query_params_format.get("userid") :
+            QuerySet = QuerySet.filter(userid=self.request.query_params_format.get("userid"))
+
         if self.request.user.rolecode in ["1000","1001","1005","1006"]:
             pass
         elif self.request.user.rolecode == '2001':
