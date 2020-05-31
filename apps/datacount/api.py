@@ -404,6 +404,7 @@ class DataCountAPIView(GenericViewSetCustom):
                     "amount" : 0.0,
                     "order_count":0,
                     "order_success_count":0,
+                    "myfee":0.0,
                     "rate" : 0.0,
                     "today" : today[:10],
                     "tech_cost" : 0.0
@@ -414,6 +415,7 @@ class DataCountAPIView(GenericViewSetCustom):
                 pass_order_dict[order.userid][order.paytype]['amount'] += float(order.amount)
                 pass_order_dict[order.userid][order.paytype]['order_success_count'] += 1
                 pass_order_dict[order.userid][order.paytype]['tech_cost'] += float(order.tech_cost)
+                pass_order_dict[order.userid][order.paytype]['myfee'] += float(order.myfee)
 
         data = []
 
